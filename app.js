@@ -146,21 +146,22 @@ function closeCam(){clearInterval(loopT);loopT=0;if(stream)stream.getTracks().fo
 const setStatus=t=>{$('#status').textContent=t};
 function camThumb(){const n=sess?sess.pages.length+(sess.sides?sess.sides.length:0):0;$('#cnt').textContent=n;const last=sess&&sess.pages[sess.pages.length-1];if(camThumb.u)URL.revokeObjectURL(camThumb.u);camThumb.u=last?URL.createObjectURL(last.blob):'';$('#thumb').style.backgroundImage=last?`url(${camThumb.u})`:'none'}
 const work=document.createElement('canvas');
+const hist=[];function smoothQ(q){hist.push(q);if(hist.length>5)hist.shift();if(hist.length<3)return q;const med=a=>{const s=[...a].sort((x,y)=>x-y);return s[s.length>>1]};return q.map((_,i)=>({x:med(hist.map(h=>h[i].x)),y:med(hist.map(h=>h[i].y))}))}
 function step(){
  if(!vid.videoWidth||capturing||$('#blurWarn').classList.contains('on'))return;
- const k=480/Math.max(vid.videoWidth,vid.videoHeight);work.width=Math.round(vid.videoWidth*k);work.height=Math.round(vid.videoHeight*k);
+ const k=500/Math.max(vid.videoWidth,vid.videoHeight);work.width=Math.round(vid.videoWidth*k);work.height=Math.round(vid.videoHeight*k);
  work.getContext('2d').drawImage(vid,0,0,work.width,work.height);
  let q=null;try{q=CV?cvQuad(work):null}catch(e){q=null}
  const pre=sess.kind==='id'?idPrompt()+'  ':'';
  if(!CV)setStatus('กำลังเตรียมตัวจับเอกสาร... กดถ่ายเองได้');
- if(q){q=q.map(p=>({x:p.x/k,y:p.y/k}));lost=0;
+ if(q){q=smoothQ(q.map(p=>({x:p.x/k,y:p.y/k})));lost=0;
   const dg=Math.hypot(vid.videoWidth,vid.videoHeight),mv=lastQ?Math.max(...q.map((p,i)=>Math.hypot(p.x-lastQ[i].x,p.y-lastQ[i].y)))/dg:1;
   if(!armed&&mv>.06)armed=true;stable=mv<.018?stable+1:0;lastQ=q;quad=q;
   if(!S.auto)setStatus(pre||'เจอเอกสารแล้ว กดถ่ายได้เลย');
   else if(!armed)setStatus(sess.kind==='id'?idPrompt():'เปลี่ยนหน้าถัดไปได้เลย');
   else if(stable<NEED)setStatus(sess.kind==='id'?idPrompt():'เจอเอกสารแล้ว ถือนิ่งๆ');
   else{capture();return}
- }else if(CV){lost++;if(lost>2){quad=lastQ=null;stable=0;armed=true;setStatus(sess.kind==='id'?idPrompt():(S.auto?'ส่องกล้องให้เห็นกระดาษทั้งแผ่น':'กดถ่ายได้เลย'))}}
+ }else if(CV){lost++;if(lost>2){hist.length=0;quad=lastQ=null;stable=0;armed=true;setStatus(sess.kind==='id'?idPrompt():(S.auto?'ส่องกล้องให้เห็นกระดาษทั้งแผ่น':'กดถ่ายได้เลย'))}}
  $('#ring').setAttribute('stroke-dashoffset',289*(1-(S.auto&&armed&&quad?Math.min(1,stable/NEED):0)));
 }
 function drawOv(){
